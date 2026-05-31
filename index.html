@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>AI 智能題庫整理助教</title>
+
+<!-- PWA 支援 -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#667eea">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AI題庫助教">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+<!-- 手機版左側面板 (全螢幕選單) -->
+<div class="left-panel" id="mobile-sidebar">
+    <button class="close-panel-btn" onclick="handleClosePanel()">✕</button>
+    <div class="role-section">
+        <h3>🎭 選擇角色</h3>
+        <div class="role-grid">
+            <div class="role-card active" data-role="teacher">
+                <div class="role-avatar">🧙‍♂️</div>
+                <div class="role-name">唐三藏</div>
+                <div class="role-tag">文史社會類</div>
+            </div>
+            <div class="role-card" data-role="friend">
+                <div class="role-avatar">🐵</div>
+                <div class="role-name">孫悟空</div>
+                <div class="role-tag">數理理工類</div>
+            </div>
+            <div class="role-card" data-role="senior">
+                <div class="role-avatar">🌙</div>
+                <div class="role-name">沙悟淨</div>
+                <div class="role-tag">語文表達類</div>
+            </div>
+            <div class="role-card" data-role="assistant">
+                <div class="role-avatar">🐷</div>
+                <div class="role-name">豬八戒</div>
+                <div class="role-tag">自然生態類</div>
+            </div>
+        </div>
+
+        <div class="current-role-display">
+            <div class="role-avatar">🧙‍♂️</div>
+            <div class="role-name">唐三藏</div>
+        </div>
+    </div>
+</div>
+
+<div class="right-panel">
+    <!-- 桌面版展開按鈕 -->
+    <button class="toggle-left-btn" onclick="toggleLeftPanel()">☰</button>
+
+    <!-- 手機版頂部導航 -->
+    <div class="mobile-header">
+        <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+        <span id="mobile-role-display" style="font-weight: 600; font-size: 18px; color: #ffffff;">🧙‍♂️ 唐三藏</span>
+        <div style="display:flex; gap:6px; align-items:center; flex-shrink:0;">
+            <button class="auth-indicator-btn js-auth-indicator" onclick="onAuthIndicatorClick()">訪客</button>
+            <button class="mobile-settings-btn" onclick="openSettings()">⚙️</button>
+        </div>
+    </div>
+
+    <!-- 桌面版標題列（含右側工具列） -->
+    <div class="title-row">
+        <h1 class="title">🤖 AI 智能題庫整理助教</h1>
+        <div class="desktop-toolbar">
+            <button class="auth-indicator-btn js-auth-indicator" onclick="onAuthIndicatorClick()">訪客</button>
+            <button class="mobile-settings-btn" onclick="openSettings()">⚙️</button>
+        </div>
+    </div>
+    
+    <div class="function-tabs">
+        <div class="tab active" data-tab="chat">💬 智慧對話</div>
+        <div class="tab" data-tab="upload">🤖 AI 智能整理</div>
+        <div class="tab" data-tab="display">📋 題庫檢視</div>
+        <div class="tab" data-tab="quiz">🎯 互動練習</div>
+        <div class="tab" data-tab="history">📊 答題記錄</div>
+        <div class="tab" data-tab="generate">📈 弱點練習</div>
+        <div class="tab" data-tab="gen-content">✨ 題目生成</div>
+    </div>
+
+    <!-- 回到頂端按鈕 -->
+    <button class="back-to-top" id="back-to-top" onclick="scrollToTop()">
+        ↑
+    </button>
+
+    <div class="content-area">
+        <div class="function-content active" id="chat">
+            <div class="chat-container">
+                <div class="messages" id="chat-messages"></div>
+                <div class="input-area">
+                    <input type="text" id="chat-input" placeholder="輸入問題,按 Enter 發送">
+                    <button class="btn btn-primary" onclick="sendMessage()">發送</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="function-content" id="upload">
+            <div style="background: rgba(0, 212, 255, 0.1); border-left: 4px solid #00d4ff; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid rgba(0, 212, 255, 0.3);">
+                <div style="font-weight: 600; color: #00d4ff; margin-bottom: 8px;">🤖 AI 智能整理功能</div>
+                <div style="color: #e0f2fe; font-size: 13px; line-height: 1.6;">
+                    <strong>直接上傳檔案或圖片，自動解析！</strong><br>
+                    🖼️ JPG、PNG、WEBP - AI 直接從圖片辨識題目<br>
+                    ✅ DOCX - 自動解壓縮提取文字<br>
+                    ✅ PDF - 自動解析提取文字<br>
+                    ✅ TXT - 直接讀取<br>
+                    ✅ 或直接貼上文字內容
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                <div class="upload-area" onclick="document.getElementById('file-input').click()" style="margin: 0; padding: 18px 12px;">
+                    <div style="font-size: 30px; margin-bottom: 6px;">📄</div>
+                    <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">上傳文字檔案</div>
+                    <div style="font-size: 12px; color: #f0f0f0;">TXT、DOCX、PDF</div>
+                    <input type="file" id="file-input" accept=".txt,.docx,.pdf" style="display:none">
+                </div>
+                <div class="upload-area" onclick="document.getElementById('image-file-input').click()" style="margin: 0; padding: 18px 12px; border-color: rgba(167, 139, 250, 0.5);">
+                    <div style="font-size: 30px; margin-bottom: 6px;">🖼️</div>
+                    <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">上傳圖片</div>
+                    <div style="font-size: 12px; color: #f0f0f0;">JPG、PNG、WEBP（可多張）</div>
+                    <input type="file" id="image-file-input" accept="image/*" multiple style="display:none" onchange="handleImageUpload(event)">
+                </div>
+            </div>
+
+            <!-- 圖片預覽區 -->
+            <div id="image-preview-area" style="display:none; background: rgba(167,139,250,0.08); border: 1px solid rgba(167,139,250,0.3); border-radius: 12px; padding: 12px; margin-bottom: 12px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 10px;">
+                    <span style="color:#a78bfa; font-size:13px; font-weight:600;">🖼️ 已選擇 <span id="image-count">0</span> 張圖片（AI 將直接辨識圖片內容）</span>
+                    <button onclick="clearAllImages()" style="background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.4); color:#fca5a5; border-radius:6px; padding:3px 10px; font-size:12px; cursor:pointer;">清除全部</button>
+                </div>
+                <div id="image-preview-list" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+            </div>
+
+            <div style="margin-bottom: 10px;"><strong>📝 或直接貼上文字（上傳圖片時可補充說明）:</strong></div>
+            <textarea class="textarea-large" id="raw-text" placeholder="上傳檔案或直接貼上題目內容...
+
+AI 會自動識別和整理!"></textarea>
+            
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button class="btn btn-primary" onclick="aiProcessQuestions()" style="flex: 3;">🤖 AI 智能整理</button>
+                <button class="btn btn-secondary" onclick="clearInput()" style="flex: 1;">🗑️ 清空</button>
+            </div>
+            
+            <div id="processing-status" style="margin-top: 15px; display: none;">
+                <div style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border-radius: 8px; padding: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span id="status-text" style="color: #ffffff; font-weight: 500; display: flex; align-items: center;">
+                            <span class="loading-spinner"></span>
+                            🤖 處理中...
+                        </span>
+                        <span id="status-count" style="color: #ffffff; font-size: 14px;">0 / 0</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="function-content" id="display">
+            <div id="exam-paper-header" style="margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
+                    <strong>📋 試卷列表</strong>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button class="btn btn-secondary" onclick="document.getElementById('import-json-input-display').click()" style="width: auto; padding: 8px 20px; margin: 0;">📂 匯入 JSON</button>
+                        <input type="file" id="import-json-input-display" accept=".json" style="display:none" onchange="handleJSONImportFromDisplay(event)">
+                        <button id="delete-paper-btn" class="btn btn-secondary" onclick="togglePaperDeleteMode()" style="width: auto; padding: 8px 20px; margin: 0;">🗑️ 刪除試卷</button>
+                        <button id="merge-paper-btn" class="btn btn-secondary" onclick="togglePaperMergeMode()" style="width: auto; padding: 8px 20px; margin: 0;">🔗 合併試卷</button>
+                    </div>
+                </div>
+
+                <!-- 搜尋與篩選區域 -->
+                <div id="paper-search-area" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <input type="text" id="paper-search-input" placeholder="🔍 搜尋試卷名稱..."
+                        style="flex: 1; min-width: 200px; padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.3);
+                            background: rgba(255, 255, 255, 0.1); color: #d0d0d0; font-size: 14px; outline: none;"
+                        onkeyup="if(event.key==='Enter') filterExamPapers()">
+
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <span style="font-size: 13px; color: #ffffff; white-space: nowrap;">創建時間:</span>
+                        <input type="date" id="paper-create-start" placeholder="開始"
+                            style="padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.3);
+                                background: rgba(255, 255, 255, 0.1); color: #ffffff; font-size: 13px; outline: none;"
+                            onchange="filterExamPapers()">
+                        <span style="font-size: 13px; color: #ffffff;">~</span>
+                        <input type="date" id="paper-create-end" placeholder="結束"
+                            style="padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.3);
+                                background: rgba(255, 255, 255, 0.1); color: #ffffff; font-size: 13px; outline: none;"
+                            onchange="filterExamPapers()">
+                    </div>
+
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <span style="font-size: 13px; color: #ffffff; white-space: nowrap;">測驗時間:</span>
+                        <input type="date" id="paper-test-start" placeholder="開始"
+                            style="padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.3);
+                                background: rgba(255, 255, 255, 0.1); color: #ffffff; font-size: 13px; outline: none;"
+                            onchange="filterExamPapers()">
+                        <span style="font-size: 13px; color: #ffffff;">~</span>
+                        <input type="date" id="paper-test-end" placeholder="結束"
+                            style="padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.3);
+                                background: rgba(255, 255, 255, 0.1); color: #ffffff; font-size: 13px; outline: none;"
+                            onchange="filterExamPapers()">
+                    </div>
+
+                    <select id="paper-status-filter"
+                        style="padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.3);
+                            background: rgba(255, 255, 255, 0.1); color: #ffffff; font-size: 13px; outline: none;"
+                        onchange="filterExamPapers()">
+                        <option value="all" style="background: #2a2a4e; color: #ffffff;">全部狀態</option>
+                        <option value="in-progress" style="background: #2a2a4e; color: #ffffff;">測驗中</option>
+                        <option value="tested" style="background: #2a2a4e; color: #ffffff;">已測驗</option>
+                        <option value="untested" style="background: #2a2a4e; color: #ffffff;">未測驗</option>
+                    </select>
+
+                    <button class="btn btn-secondary" onclick="clearPaperSearch()" style="width: auto; padding: 8px 16px; margin: 0;">✕ 清除搜尋</button>
+                </div>
+            </div>
+
+            <div class="question-bank-display" id="question-display" style="border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; padding: 15px; background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); overflow-y: auto;">
+                <div style="text-align: center; padding: 40px; color: #ffffff;">
+                    <div style="font-size: 48px; margin-bottom: 20px;">📚</div>
+                    <p>尚無試卷</p>
+                    <p style="font-size: 14px; color: #ffffff; margin-top: 10px;">使用「AI 智能整理」功能創建第一份試卷</p>
+                </div>
+            </div>
+
+            <input type="file" id="import-json-input" accept=".json" style="display:none">
+        </div>
+
+        <div class="function-content" id="quiz" style="position:relative;">
+            <div id="quiz-current-paper-info" style="display:none; margin-bottom: 12px; padding: 10px 14px; background: rgba(0,212,255,0.07); border: 1px solid rgba(0,212,255,0.2); border-radius: 10px; font-size: 13px; color: #94a3b8; gap: 16px; align-items: center;">
+                <span style="color:#00d4ff; font-weight:600;">📄 目前試卷：</span>
+                <span id="quiz-current-paper-name" style="color:#e0f2fe;">—</span>
+                <span id="quiz-current-paper-status" style="margin-left:auto;"></span>
+            </div>
+            <!-- 測驗計時列 -->
+            <div id="quiz-timer-section" style="display:none; align-items:center; gap:10px; padding:8px 14px; background:rgba(245,158,11,0.07); border:1px solid rgba(245,158,11,0.2); border-radius:10px; margin-bottom:12px;">
+                <span id="quiz-timer-display" style="font-size:20px; font-weight:700; color:#fbbf24; font-variant-numeric:tabular-nums; letter-spacing:0.05em;">⏱ 00:00</span>
+                <button id="quiz-pause-btn" onclick="toggleQuizPause()" title="暫停" style="background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.4); color:#fbbf24; border-radius:8px; padding:4px 12px; cursor:pointer; font-size:16px;">⏸</button>
+            </div>
+            <!-- 暫停遮罩 -->
+            <div id="quiz-pause-overlay" style="display:none; position:absolute; inset:0; background:rgba(10,14,39,0.92); backdrop-filter:blur(8px); z-index:50; flex-direction:column; align-items:center; justify-content:center; border-radius:16px; gap:16px;">
+                <div style="font-size:48px;">⏸</div>
+                <div style="font-size:20px; font-weight:700; color:#ffffff;">測驗已暫停</div>
+                <div style="font-size:14px; color:#94a3b8;">題目已隱藏，點擊繼續作答</div>
+                <button onclick="toggleQuizPause()" style="margin-top:8px; padding:12px 32px; background:var(--accent-gradient, linear-gradient(135deg,#667eea,#764ba2)); border:none; border-radius:12px; color:#fff; font-size:16px; font-weight:600; cursor:pointer;">▶ 繼續作答</button>
+            </div>
+            <div id="quiz-content">
+                <div style="text-align: center; padding: 40px; color: #f0f0f0;">
+                    <div style="font-size: 48px; margin-bottom: 20px;">🎯</div>
+                    <p style="margin-bottom: 10px;">請先輸入題庫</p>
+                    <p style="font-size: 14px; color: #e0e0e0;">題目與選項順序將會隨機打亂</p>
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="btn btn-primary" onclick="startQuiz()">🎯 開始練習</button>
+                <button class="btn btn-primary" id="action-btn" onclick="handleActionButton()" disabled style="opacity: 0.5; cursor: not-allowed;">✓ 確定答案</button>
+            </div>
+        </div>
+
+        <div class="function-content" id="history">
+            <div id="history-header" style="margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
+                    <strong>📊 答題記錄</strong>
+                    <button id="delete-history-btn" class="btn btn-secondary" onclick="clearHistory()" style="width: auto; padding: 8px 20px; margin: 0;">🗑️ 清除記錄</button>
+                </div>
+
+                <!-- 搜尋與篩選區域 -->
+                <div id="history-search-area" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <input type="text" id="history-search-input" placeholder="🔍 搜尋記錄名稱..."
+                        style="flex: 1; min-width: 200px; padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.3);
+                        background: rgba(255, 255, 255, 0.1); color: #ffffff; font-size: 14px; outline: none;"
+                        oninput="filterHistory()"
+                        onkeypress="if(event.key === 'Enter') filterHistory()">
+
+                    <div style="display: flex; gap: 5px; align-items: center;">
+                        <span style="color: #ffffff; font-size: 14px;">📅</span>
+                        <input type="date" id="history-start-date"
+                            style="padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.3);
+                            background: rgba(255, 255, 255, 0.1); color: #ffffff; font-size: 14px; outline: none;"
+                            onchange="filterHistory()">
+                        <span style="color: #ffffff; font-size: 14px;">~</span>
+                        <input type="date" id="history-end-date"
+                            style="padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.3);
+                            background: rgba(255, 255, 255, 0.1); color: #ffffff; font-size: 14px; outline: none;"
+                            onchange="filterHistory()">
+                    </div>
+
+                    <button class="btn btn-secondary" onclick="clearHistorySearch()" style="width: auto; padding: 8px 16px; margin: 0;">✕ 清除搜尋</button>
+                </div>
+            </div>
+
+            <div id="history-display" style="border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; padding: 15px; background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px);">
+                <div style="text-align: center; padding: 40px; color: #f0f0f0;">
+                    <div style="font-size: 48px; margin-bottom: 20px;">📝</div>
+                    <p>尚無答題記錄</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="function-content" id="generate">
+            <div style="background: rgba(0, 212, 255, 0.1); border-left: 4px solid #00d4ff; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid rgba(0, 212, 255, 0.3);">
+                <div style="font-weight: 600; color: #00d4ff; margin-bottom: 8px;">✨ AI 智能題目生成</div>
+                <div style="color: #e0f2fe; font-size: 13px; line-height: 1.6;">
+                    <strong>根據答題記錄生成相似題目!</strong><br>
+                    ✅ 分析錯題的題型與考點<br>
+                    ✅ 自動生成相似難度的題目<br>
+                    ✅ 針對弱點進行加強練習<br>
+                    ✅ 可自訂生成題數(1-50題)
+                </div>
+            </div>
+
+            <div id="generate-settings" style="margin-bottom: 20px;">
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: 600; color: #ffffff; margin-bottom: 8px;">📊 分析範圍</label>
+                    <select id="generate-source"
+                        style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.3);
+                        background: rgba(255, 255, 255, 0.1); color: #ffffff; font-size: 14px; outline: none;"
+                        onchange="updateWrongQuestionsList()">
+                        <option value="all" style="background: #2a2a4e; color: #ffffff;">所有答錯的題目</option>
+                        <option value="recent" style="background: #2a2a4e; color: #ffffff;">最近一次測驗的錯題</option>
+                        <option value="custom" style="background: #2a2a4e; color: #ffffff;">自訂選擇錯題</option>
+                    </select>
+                </div>
+
+                <div id="wrong-questions-preview" style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: 600; color: #ffffff; margin-bottom: 8px;">
+                        📝 將分析的錯題（按測驗記錄分類）
+                    </label>
+                    <div id="wrong-questions-list" style="max-height: 300px; overflow-y: auto; border: 1px solid rgba(255, 255, 255, 0.2);
+                        border-radius: 8px; padding: 10px; background: rgba(255, 255, 255, 0.05);">
+                        <div style="text-align: center; padding: 20px; color: #d0d0d0;">
+                            請先選擇分析範圍
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: 600; color: #ffffff; margin-bottom: 8px;">🎯 生成模式</label>
+                    <select id="generate-mode"
+                        style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.3);
+                        background: rgba(255, 255, 255, 0.1); color: #ffffff; font-size: 14px; outline: none;"
+                        onchange="updateGenerateMode()">
+                        <option value="ai" style="background: #1e293b; color: #ffffff;">🤖 AI 生成相似題目</option>
+                        <option value="direct" style="background: #1e293b; color: #ffffff;">📋 直接合成錯題試卷</option>
+                    </select>
+                </div>
+
+                <div id="ai-count-section" style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: 600; color: #ffffff; margin-bottom: 8px;">🔢 生成題數</label>
+                    <input type="number" id="generate-count" value="5" min="1" max="50"
+                        style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.3);
+                        background: rgba(255, 255, 255, 0.1); color: #ffffff; font-size: 14px; outline: none;">
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: 600; color: #ffffff; margin-bottom: 8px;">📝 試卷名稱</label>
+                    <input type="text" id="generate-paper-name" placeholder="例如：數學錯題加強練習"
+                        style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.3);
+                        background: rgba(255, 255, 255, 0.1); color: #ffffff; font-size: 14px; outline: none;">
+                </div>
+
+                <button class="btn btn-primary" onclick="startGenerateQuestions()" style="margin-top: 15px;">
+                    <span id="generate-button-text">✨ 開始生成題目</span>
+                </button>
+            </div>
+
+            <div id="generate-status" style="margin-top: 20px; display: none;">
+                <div style="background: rgba(0, 212, 255, 0.05); backdrop-filter: blur(10px); border-radius: 8px; padding: 15px; border: 1px solid rgba(0, 212, 255, 0.3);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span id="generate-status-text" style="color: #ffffff; font-weight: 500; display: flex; align-items: center;">
+                            <span class="loading-spinner"></span>
+                            ✨ 生成中...
+                        </span>
+                        <span id="generate-status-count" style="color: #ffffff; font-size: 14px;">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="generate-progress-fill" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="generate-result" style="margin-top: 20px; display: none;">
+                <div style="background: rgba(56, 161, 105, 0.2); border: 1px solid rgba(56, 161, 105, 0.4);
+                    border-radius: 8px; padding: 15px; color: #ffffff;">
+                    <div style="font-weight: 600; margin-bottom: 8px;">✅ 生成完成！</div>
+                    <div id="generate-result-text" style="font-size: 14px; line-height: 1.6;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ✨ 題目生成（從講義/課文出題） -->
+        <div class="function-content" id="gen-content">
+
+            <!-- 頂部橫幅 -->
+            <div class="gencontent-banner">
+                <div class="gencontent-banner-icon">✨</div>
+                <div>
+                    <div class="gencontent-banner-title">智能出題</div>
+                    <div class="gencontent-banner-sub">上傳任何學習材料，AI 自動為你出題</div>
+                </div>
+                <div class="gencontent-banner-formats">
+                    <span>PDF</span><span>DOCX</span><span>PPTX</span><span>圖片</span><span>TXT</span>
+                </div>
+            </div>
+
+            <!-- 統一上傳區 -->
+            <div class="gencontent-dropzone" id="gencontent-dropzone"
+                onclick="document.getElementById('gen-content-any').click()">
+                <input type="file" id="gen-content-any"
+                    accept=".txt,.docx,.pdf,.pptx,.ppt,image/*"
+                    multiple style="display:none"
+                    onchange="handleGenContentAnyUpload(event)">
+                <div class="gencontent-drop-icon">📂</div>
+                <div class="gencontent-drop-text">拖放或點擊上傳</div>
+                <div class="gencontent-drop-hint">PDF、DOCX、PPTX、TXT、JPG、PNG 等格式</div>
+            </div>
+
+            <!-- 已上傳狀態列 -->
+            <div id="gencontent-file-badge" style="display:none;" class="gencontent-file-badge">
+                <span id="gencontent-file-badge-text">📄 已載入檔案</span>
+                <button onclick="clearGenContentAll()" class="gencontent-clear-btn">✕ 清除</button>
+            </div>
+
+            <!-- 圖片預覽 -->
+            <div id="gen-content-image-preview" style="display:none;" class="gencontent-img-preview">
+                <div class="gencontent-img-header">
+                    <span>🖼️ 已選擇 <span id="gen-content-image-count">0</span> 張圖片</span>
+                    <button onclick="clearGenContentImages()" class="gencontent-clear-btn">✕ 清除圖片</button>
+                </div>
+                <div id="gen-content-image-list" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;"></div>
+            </div>
+
+            <!-- 文字補充 -->
+            <div class="gencontent-text-section">
+                <div class="gencontent-text-label">✏️ 補充說明或直接貼上文字</div>
+                <textarea id="gen-content-text" class="gencontent-textarea"
+                    placeholder="可直接貼上課文、筆記、文章內容...（不上傳檔案時必填）"></textarea>
+            </div>
+
+            <!-- 設定列 -->
+            <div class="gencontent-settings-row">
+                <div class="gencontent-setting-item">
+                    <div class="gencontent-setting-label">🔢 題數</div>
+                    <input type="number" id="gen-content-count" value="10" min="1" max="50"
+                        class="gencontent-setting-input" style="width:70px;">
+                </div>
+                <div class="gencontent-setting-item">
+                    <div class="gencontent-setting-label">🎯 難度</div>
+                    <select id="gen-content-difficulty" class="gencontent-setting-select">
+                        <option value="mixed" style="background:#1e293b;">混合</option>
+                        <option value="easy" style="background:#1e293b;">簡單</option>
+                        <option value="medium" style="background:#1e293b;">中等</option>
+                        <option value="hard" style="background:#1e293b;">困難</option>
+                    </select>
+                </div>
+                <div class="gencontent-setting-item" style="flex:2; min-width:160px;">
+                    <div class="gencontent-setting-label">📋 試卷名稱</div>
+                    <input type="text" id="gen-content-paper-name" placeholder="例：第三章重點練習"
+                        class="gencontent-setting-input" style="width:100%;">
+                </div>
+            </div>
+
+            <!-- 生成按鈕 -->
+            <button class="gencontent-generate-btn" onclick="startGenFromContent()">
+                <span id="gen-content-btn-text">✨ 開始生成題目</span>
+            </button>
+
+            <!-- 進度 -->
+            <div id="gen-content-status" style="margin-top: 20px; display: none;">
+                <div class="gencontent-progress-box">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <span id="gen-content-status-text" style="color:#e9d5ff; font-weight:500; display:flex; align-items:center; gap:8px;">
+                            <span class="loading-spinner"></span>✨ AI 出題中...
+                        </span>
+                        <span id="gen-content-status-count" style="color:#a78bfa; font-size:14px; font-weight:600;">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="gen-content-progress-fill" style="width:0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 結果 -->
+            <div id="gen-content-result" style="margin-top: 20px; display: none;">
+                <div id="gen-content-result-text"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 手機版底部導覽列 -->
+    <nav class="mobile-bottom-nav">
+        <button class="mob-tab active" data-tab="chat" onclick="switchTab('chat')">
+            <span class="mob-tab-icon">💬</span>
+            <span class="mob-tab-label">對話</span>
+        </button>
+        <button class="mob-tab" data-tab="upload" onclick="switchTab('upload')">
+            <span class="mob-tab-icon">🤖</span>
+            <span class="mob-tab-label">整理</span>
+        </button>
+        <button class="mob-tab" data-tab="display" onclick="switchTab('display')">
+            <span class="mob-tab-icon">📋</span>
+            <span class="mob-tab-label">題庫</span>
+        </button>
+        <button class="mob-tab" data-tab="quiz" onclick="switchTab('quiz')">
+            <span class="mob-tab-icon">🎯</span>
+            <span class="mob-tab-label">練習</span>
+        </button>
+        <button class="mob-tab" data-tab="history" onclick="switchTab('history')">
+            <span class="mob-tab-icon">📊</span>
+            <span class="mob-tab-label">記錄</span>
+        </button>
+        <button class="mob-tab" data-tab="generate" onclick="switchTab('generate')">
+            <span class="mob-tab-icon">📈</span>
+            <span class="mob-tab-label">弱點</span>
+        </button>
+        <button class="mob-tab" data-tab="gen-content" onclick="switchTab('gen-content')">
+            <span class="mob-tab-icon">✨</span>
+            <span class="mob-tab-label">出題</span>
+        </button>
+    </nav>
+</div>
+</div>
+
+<!-- 修改答案彈出視窗 -->
+<div id="edit-answer-modal">
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 20px; padding: 30px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="color: #ffffff; margin: 0; font-size: 22px;">✏️ 修改答案</h3>
+            <button onclick="closeEditAnswerModal()" style="background: rgba(255, 255, 255, 0.2); border: none; color: #ffffff; font-size: 24px; cursor: pointer; border-radius: 50%; width: 36px; height: 36px; line-height: 1; transition: all 0.3s;" onmouseover="this.style.background='rgba(255, 255, 255, 0.3)'" onmouseout="this.style.background='rgba(255, 255, 255, 0.2)'">✕</button>
+        </div>
+
+        <div id="edit-answer-content" style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+            <div style="margin-bottom: 15px;">
+                <div style="font-weight: 600; color: #ffffff; margin-bottom: 10px; font-size: 14px;">📝 題目</div>
+                <div id="edit-question-text" style="color: #ffffff; font-size: 15px; line-height: 1.6; padding: 12px; background: rgba(255, 255, 255, 0.05); border-radius: 8px;"></div>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <div style="font-weight: 600; color: #ffffff; margin-bottom: 10px; font-size: 14px;">📋 選項</div>
+                <div id="edit-question-options" style="color: #ffffff; font-size: 14px;"></div>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <div style="font-weight: 600; color: #ffffff; margin-bottom: 10px; font-size: 14px;">
+                    ✔️ 當前答案: <span id="edit-current-answer" style="color: #fbbf24; font-size: 18px; font-weight: 700;"></span>
+                    <span id="edit-ai-badge" style="display: none; margin-left: 10px; font-size: 12px; color: #fbbf24; background: rgba(251, 191, 36, 0.2); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(251, 191, 36, 0.4);">⚠️ AI提供</span>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; font-weight: 600; color: #ffffff; margin-bottom: 10px; font-size: 14px;">🎯 選擇新答案</label>
+            <div id="edit-answer-choices" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;"></div>
+        </div>
+
+        <div style="display: flex; gap: 12px;">
+            <button id="confirm-edit-answer" onclick="confirmEditAnswer()" class="btn btn-primary" style="flex: 1; padding: 12px; font-size: 16px; background: rgba(255, 255, 255, 0.9); color: #667eea; font-weight: 600;">
+                ✓ 確認修改
+            </button>
+            <button onclick="closeEditAnswerModal()" class="btn btn-secondary" style="flex: 1; padding: 12px; font-size: 16px;">
+                ✕ 取消
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- 儲存試卷 Modal -->
+<div id="save-exam-modal">
+    <div class="save-exam-inner">
+        <div class="save-exam-header">✅ AI 整理完成</div>
+        <div id="save-exam-info" class="save-exam-info"></div>
+        <div class="save-exam-tabs">
+            <button class="save-exam-tab active" data-mode="new" onclick="switchSaveExamTab('new')">＋ 建立新試卷</button>
+            <button class="save-exam-tab" data-mode="existing" onclick="switchSaveExamTab('existing')">📂 加入舊試卷</button>
+        </div>
+        <div id="save-exam-panel-new" class="save-exam-panel">
+            <label class="save-exam-label">請為這份試卷命名：</label>
+            <input type="text" id="save-exam-name" class="save-exam-input"
+                   placeholder="試卷名稱..."
+                   onkeydown="if(event.key==='Enter')confirmSaveExamModal()">
+        </div>
+        <div id="save-exam-panel-existing" class="save-exam-panel" style="display:none">
+            <label class="save-exam-label">選擇要加入的試卷：</label>
+            <select id="save-exam-select" class="save-exam-input save-exam-select"></select>
+        </div>
+        <div id="save-exam-main-footer" class="save-exam-footer">
+            <button class="btn btn-primary" onclick="confirmSaveExamModal()">確定</button>
+            <button class="btn btn-secondary" onclick="cancelSaveExamModal()">取消</button>
+        </div>
+        <div id="save-exam-cancel-confirm" style="display:none">
+            <div class="save-exam-cancel-warning">
+                ⚠️ 確定要取消嗎？<br>整理好的題目將不會被儲存。
+            </div>
+            <div class="save-exam-footer">
+                <button class="btn btn-danger" onclick="forceCloseSaveExamModal()">確定取消</button>
+                <button class="btn btn-secondary" onclick="backFromCancelConfirm()">返回</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 試卷右鍵/長按選單 -->
+<div id="paper-ctx-menu" class="paper-ctx-menu">
+    <button onclick="ctxDuplicatePaper()">📋 複製試卷</button>
+    <button class="danger" onclick="ctxDeletePaper()">🗑️ 刪除試卷</button>
+</div>
+
+<!-- 通用確認 Modal -->
+<div id="confirm-modal">
+    <div class="save-exam-inner" style="max-width: 420px">
+        <div id="confirm-modal-title" class="save-exam-header"></div>
+        <div id="confirm-modal-message" class="save-exam-info" style="margin-bottom: 0; white-space: pre-line;"></div>
+        <div class="save-exam-footer">
+            <button id="confirm-modal-ok" class="btn btn-danger" onclick="confirmModalOk()">確定</button>
+            <button class="btn btn-secondary" onclick="confirmModalCancel()">取消</button>
+        </div>
+    </div>
+</div>
+
+<!-- 登入/註冊 Modal -->
+<div id="login-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); z-index:10000; align-items:center; justify-content:center;">
+    <div style="background:linear-gradient(135deg,#1e293b,#0f172a); border:1px solid rgba(0,212,255,0.3); border-radius:20px; padding:28px; max-width:340px; width:90%; box-shadow:0 20px 60px rgba(0,0,0,0.7);">
+        <div style="text-align:center; margin-bottom:20px;">
+            <div style="font-size:36px; margin-bottom:8px;">🔐</div>
+            <h3 id="login-title" style="color:#e0f2fe; margin:0; font-size:20px;">登入帳號</h3>
+            <p id="login-subtitle" style="color:#64748b; font-size:13px; margin:8px 0 0;">登入後享有完整功能</p>
+        </div>
+
+        <div id="login-reason-box" style="display:none; background:rgba(251,191,36,0.1); border:1px solid rgba(251,191,36,0.3); border-radius:8px; padding:10px 12px; margin-bottom:14px; font-size:13px; color:#fbbf24; line-height:1.5;"></div>
+
+        <div style="display:flex; flex-direction:column; gap:10px;">
+            <input type="text" id="login-username" class="settings-input" placeholder="帳號" autocomplete="username" onkeydown="if(event.key==='Enter')submitLogin()">
+            <input type="password" id="login-password" class="settings-input" placeholder="密碼" autocomplete="current-password" onkeydown="if(event.key==='Enter')submitLogin()">
+            <input type="password" id="login-password2" class="settings-input" placeholder="確認密碼" autocomplete="new-password" style="display:none;" onkeydown="if(event.key==='Enter')submitLogin()">
+        </div>
+
+        <div id="login-error" style="display:none; color:#f87171; font-size:13px; margin-top:8px; text-align:center;"></div>
+
+        <button class="btn btn-primary" onclick="submitLogin()" id="login-submit-btn" style="margin-top:14px; width:100%;">登入</button>
+
+        <div style="text-align:center; margin-top:10px;">
+            <button onclick="toggleLoginRegister()" id="login-toggle-btn" style="background:none; border:none; color:var(--border-neon,#00d4ff); font-size:13px; cursor:pointer; text-decoration:underline;">還沒有帳號？立即註冊</button>
+        </div>
+        <div style="text-align:center; margin-top:6px;">
+            <button id="login-guest-btn" onclick="closeLoginModal()" style="background:none; border:none; color:#475569; font-size:12px; cursor:pointer;">以訪客繼續（剩餘 <span id="login-guest-remain">5</span> 次對話）</button>
+        </div>
+    </div>
+</div>
+
+<!-- 設定 Modal -->
+<div id="settings-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); backdrop-filter:blur(6px); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:linear-gradient(135deg,#1e293b,#0f172a); border:1px solid rgba(0,212,255,0.3); border-radius:20px; padding:28px; max-width:420px; width:90%; max-height:80vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.6);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+            <h3 style="color:#e0f2fe; margin:0; font-size:20px;">⚙️ 設定</h3>
+            <button onclick="closeSettings()" style="background:rgba(255,255,255,0.1); border:none; color:#ffffff; font-size:22px; cursor:pointer; border-radius:50%; width:34px; height:34px; line-height:1;">✕</button>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:18px;">
+
+            <!-- 帳號 -->
+            <div id="settings-account-block">
+                <div class="settings-sec-header">
+                    <span class="settings-sec-title">👤 帳號</span>
+                </div>
+                <div id="settings-account-info"></div>
+            </div>
+
+            <hr class="settings-divider">
+
+            <!-- 外觀風格 -->
+            <div>
+                <div class="settings-sec-header">
+                    <span class="settings-sec-title">🎨 外觀風格</span>
+                </div>
+                <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:8px;" id="settings-theme-grid">
+                    <button class="theme-card-btn" data-theme="cyber-blue" onclick="selectThemeCard('cyber-blue')">
+                        <div style="height:36px; background:linear-gradient(135deg,#0a0e27 40%,#00d4ff);"></div>
+                        <div style="padding:6px 2px; font-size:10px; color:#e0f2fe;">深空藍</div>
+                    </button>
+                    <button class="theme-card-btn" data-theme="violet" onclick="selectThemeCard('violet')">
+                        <div style="height:36px; background:linear-gradient(135deg,#12071f 40%,#a855f7);"></div>
+                        <div style="padding:6px 2px; font-size:10px; color:#f3e8ff;">紫羅蘭</div>
+                    </button>
+                    <button class="theme-card-btn" data-theme="matrix" onclick="selectThemeCard('matrix')">
+                        <div style="height:36px; background:linear-gradient(135deg,#041a0c 40%,#22c55e);"></div>
+                        <div style="padding:6px 2px; font-size:10px; color:#dcfce7;">極光綠</div>
+                    </button>
+                    <button class="theme-card-btn" data-theme="rose" onclick="selectThemeCard('rose')">
+                        <div style="height:36px; background:linear-gradient(135deg,#1a0514 40%,#f43f5e);"></div>
+                        <div style="padding:6px 2px; font-size:10px; color:#ffe4e6;">玫瑰紅</div>
+                    </button>
+                    <label class="theme-card-btn" data-theme="custom" style="display:block; cursor:pointer; position:relative;">
+                        <div id="custom-color-preview" style="height:36px; background:linear-gradient(135deg,#1a1a2e 40%,#7c3aed); display:flex; align-items:center; justify-content:center; font-size:16px;">🎨</div>
+                        <div style="padding:6px 2px; font-size:10px; color:#e0f2fe;">自訂</div>
+                        <input type="color" id="custom-color-input" value="#7c3aed"
+                            style="position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer;"
+                            oninput="applyCustomTheme(this.value)">
+                    </label>
+                </div>
+            </div>
+
+            <hr class="settings-divider">
+
+            <!-- API 金鑰 -->
+            <div>
+                <div class="settings-sec-header">
+                    <span class="settings-sec-title">🔑 API 金鑰</span>
+                    <div class="mode-toggle-group" id="apiKey-mode-toggle">
+                        <button class="mode-btn active" data-mode="default" onclick="setSettingsMode('apiKey','default')">預設</button>
+                        <button class="mode-btn" data-mode="custom" onclick="setSettingsMode('apiKey','custom')">自訂</button>
+                    </div>
+                </div>
+                <div id="apiKey-custom-area" style="display:none;">
+                    <div id="apiKey-list"></div>
+                    <div class="add-item-form">
+                        <input id="new-apiKey-name" class="settings-input" placeholder="名稱（選填）" style="flex:1; min-width:70px;">
+                        <input id="new-apiKey-value" class="settings-input" placeholder="sk-..." type="password" style="flex:2; min-width:110px; font-family:monospace;">
+                        <button class="add-item-btn" onclick="addSettingsItem('apiKey')">＋</button>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="settings-divider">
+
+            <!-- AI 模型 -->
+            <div>
+                <div class="settings-sec-header">
+                    <span class="settings-sec-title">🤖 AI 模型</span>
+                    <div class="mode-toggle-group" id="model-mode-toggle">
+                        <button class="mode-btn active" data-mode="default" onclick="setSettingsMode('model','default')">預設</button>
+                        <button class="mode-btn" data-mode="custom" onclick="setSettingsMode('model','custom')">自訂</button>
+                    </div>
+                </div>
+                <div id="model-custom-area" style="display:none;">
+                    <div id="model-list"></div>
+                    <div class="add-item-form">
+                        <input id="new-model-name" class="settings-input" placeholder="名稱（選填）" style="flex:1; min-width:70px;">
+                        <input id="new-model-value" class="settings-input" placeholder="openai/gpt-4o-mini" style="flex:2; min-width:110px; font-family:monospace;">
+                        <button class="add-item-btn" onclick="addSettingsItem('model')">＋</button>
+                    </div>
+                    <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
+                        <span style="font-size:11px;color:#475569;width:100%;margin-bottom:2px;">— OpenRouter —</span>
+                        <button class="model-preset-btn" onclick="prefillNewItem('model','GPT-4o Mini','openai/gpt-4o-mini')">gpt-4o-mini</button>
+                        <button class="model-preset-btn" onclick="prefillNewItem('model','GPT-4o','openai/gpt-4o')">gpt-4o</button>
+                        <button class="model-preset-btn" onclick="prefillNewItem('model','DeepSeek V3','deepseek/deepseek-chat')">deepseek-chat</button>
+                        <button class="model-preset-btn" onclick="prefillNewItem('model','DeepSeek R1','deepseek/deepseek-r1')">deepseek-r1</button>
+                        <button class="model-preset-btn" onclick="prefillNewItem('model','Claude Haiku','anthropic/claude-3.5-haiku')">claude-haiku</button>
+                        <button class="model-preset-btn" onclick="prefillNewItem('model','Claude Sonnet','anthropic/claude-3.5-sonnet')">claude-sonnet</button>
+                        <button class="model-preset-btn" onclick="prefillNewItem('model','Gemini Flash','google/gemini-2.0-flash-001')">gemini-flash</button>
+                        <button class="model-preset-btn" onclick="prefillNewItem('model','Llama Free','meta-llama/llama-3.1-8b-instruct:free')">llama-free</button>
+                        <span style="font-size:11px;color:#475569;width:100%;margin:4px 0 2px;">— DeepSeek 直連 —</span>
+                        <button class="model-preset-btn" onclick="prefillNewItem('model','deepseek-chat','deepseek-chat')">deepseek-chat</button>
+                        <button class="model-preset-btn" onclick="prefillNewItem('model','deepseek-reasoner','deepseek-reasoner')">deepseek-reasoner</button>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="settings-divider">
+
+            <!-- API URL -->
+            <div>
+                <div class="settings-sec-header">
+                    <span class="settings-sec-title">🌐 API URL</span>
+                    <div class="mode-toggle-group" id="apiUrl-mode-toggle">
+                        <button class="mode-btn active" data-mode="default" onclick="setSettingsMode('apiUrl','default')">預設</button>
+                        <button class="mode-btn" data-mode="custom" onclick="setSettingsMode('apiUrl','custom')">自訂</button>
+                    </div>
+                </div>
+                <div id="apiUrl-custom-area" style="display:none;">
+                    <div id="apiUrl-list"></div>
+                    <div class="add-item-form">
+                        <input id="new-apiUrl-name" class="settings-input" placeholder="名稱（選填）" style="flex:1; min-width:70px;">
+                        <input id="new-apiUrl-value" class="settings-input" placeholder="https://..." style="flex:2; min-width:110px;">
+                        <button class="add-item-btn" onclick="addSettingsItem('apiUrl')">＋</button>
+                    </div>
+                    <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
+                        <button class="model-preset-btn" onclick="prefillNewItem('apiUrl','OpenRouter','https://openrouter.ai/api/v1/chat/completions')">OpenRouter</button>
+                        <button class="model-preset-btn" onclick="prefillNewItem('apiUrl','DeepSeek','https://api.deepseek.com/v1/chat/completions')">DeepSeek</button>
+                        <button class="model-preset-btn" onclick="prefillNewItem('apiUrl','OpenAI','https://api.openai.com/v1/chat/completions')">OpenAI</button>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="settings-divider">
+
+            <!-- 最大 Tokens -->
+            <div>
+                <div class="settings-sec-header">
+                    <span class="settings-sec-title">📏 最大 Tokens</span>
+                    <div class="mode-toggle-group" id="maxTokens-mode-toggle">
+                        <button class="mode-btn active" data-mode="default" onclick="setSettingsMode('maxTokens','default')">預設</button>
+                        <button class="mode-btn" data-mode="custom" onclick="setSettingsMode('maxTokens','custom')">自訂</button>
+                    </div>
+                </div>
+                <div id="maxTokens-custom-area" style="display:none;">
+                    <input type="number" id="settings-max-tokens" class="settings-input" min="1000" max="128000" step="1000" placeholder="例：16000">
+                </div>
+            </div>
+
+            <hr class="settings-divider">
+
+            <!-- 使用教學 -->
+            <details style="margin-bottom:8px;">
+                <summary style="cursor:pointer; list-style:none; display:flex; justify-content:space-between; align-items:center; padding:4px 0; outline:none;">
+                    <span class="settings-sec-title">📖 使用教學</span>
+                    <span style="font-size:10px; color:#475569;">▶ 點擊展開</span>
+                </summary>
+                <div style="margin-top:10px; font-size:12px; color:#94a3b8; line-height:1.8; border-left:2px solid rgba(0,212,255,0.3); padding-left:12px;">
+                    <p style="margin:0 0 10px; padding:8px 10px; background:rgba(0,212,255,0.08); border:1px solid rgba(0,212,255,0.35); border-radius:6px; color:#e2e8f0; font-weight:600; line-height:1.6;">
+                        ⚡ 新增步驟：填入值 → 按 <span style="display:inline-block;background:linear-gradient(135deg,#00d4ff,#0061ff);color:#fff;padding:0 7px;border-radius:5px;font-size:14px;line-height:1.6;vertical-align:middle;">＋</span> 加入列表 → 點藍點啟用 → 按儲存
+                    </p>
+                    <p style="margin:0 0 4px; color:#00d4ff; font-weight:600;">🔑 API 金鑰取得</p>
+                    <p style="margin:0 0 3px;">• <b style="color:#e2e8f0;">OpenRouter</b>（推薦）：openrouter.ai → API Keys<br>&nbsp;&nbsp;一個 Key 可切換所有廠牌模型</p>
+                    <p style="margin:0 0 3px;">• <b style="color:#e2e8f0;">DeepSeek</b>（便宜）：platform.deepseek.com → API keys</p>
+                    <p style="margin:0 0 10px;">• <b style="color:#e2e8f0;">OpenAI</b>：platform.openai.com → API keys</p>
+                    <p style="margin:0 0 4px; color:#00d4ff; font-weight:600;">🔗 URL 與模型需搭配使用</p>
+                    <p style="margin:0 0 3px;">• OpenRouter Key → OpenRouter URL → <code style="background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:3px;color:#a5f3fc;">openai/gpt-4o-mini</code> 等</p>
+                    <p style="margin:0 0 3px;">• DeepSeek Key → DeepSeek URL → <code style="background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:3px;color:#a5f3fc;">deepseek-chat</code></p>
+                    <p style="margin:0 0 3px;">• OpenAI Key → OpenAI URL → <code style="background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:3px;color:#a5f3fc;">gpt-4o-mini</code></p>
+                </div>
+            </details>
+
+            <button class="btn btn-primary" onclick="saveSettings()" style="margin-top:4px;">💾 儲存設定</button>
+        </div>
+    </div>
+</div>
+
+<!-- 輸入名稱 Modal（複製試卷用）-->
+<div id="name-input-modal">
+    <div class="save-exam-inner">
+        <div id="name-input-title" class="save-exam-header"></div>
+        <div class="save-exam-panel">
+            <label id="name-input-label" class="save-exam-label"></label>
+            <input type="text" id="name-input-field" class="save-exam-input"
+                   onkeydown="if(event.key==='Enter')confirmNameInputModal()">
+        </div>
+        <div class="save-exam-footer">
+            <button class="btn btn-primary" onclick="confirmNameInputModal()">確定</button>
+            <button class="btn btn-secondary" onclick="cancelNameInputModal()">取消</button>
+        </div>
+    </div>
+</div>
+
+<script src="script.js"></script>
+
+<!-- 註冊 Service Worker -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('Service Worker 已註冊'))
+      .catch(err => console.log('Service Worker 註冊失敗:', err));
+  });
+}
+</script>
+<div id="print-content"></div>
+
+<!-- 試卷重命名 Modal -->
+<div id="rename-paper-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:1000; align-items:center; justify-content:center; padding:16px;">
+    <div style="background:#1a1f3a; border:1px solid rgba(0,212,255,0.3); border-radius:16px; padding:24px; width:100%; max-width:400px;">
+        <h3 style="color:#fff; margin:0 0 16px 0; font-size:16px;">✏️ 試卷重命名</h3>
+        <input type="hidden" id="rename-paper-id">
+        <input type="text" id="rename-paper-input" style="width:100%; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.08); color:#fff; font-size:14px; box-sizing:border-box; margin-bottom:16px;" placeholder="輸入新名稱">
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button onclick="document.getElementById('rename-paper-modal').style.display='none'" style="padding:8px 20px; border-radius:8px; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.08); color:#fff; cursor:pointer;">取消</button>
+            <button onclick="confirmRenamePaper()" style="padding:8px 20px; border-radius:8px; border:none; background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; cursor:pointer; font-weight:600;">確認</button>
+        </div>
+    </div>
+</div>
+
+<!-- JSON 匯入命名 Modal -->
+<div id="import-name-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:1000; align-items:center; justify-content:center; padding:16px;">
+    <div style="background:#1a1f3a; border:1px solid rgba(0,212,255,0.3); border-radius:16px; padding:24px; width:100%; max-width:400px;">
+        <h3 style="color:#fff; margin:0 0 8px 0; font-size:16px;">📂 匯入 JSON</h3>
+        <div id="import-name-info" style="color:#94a3b8; font-size:13px; margin-bottom:16px;"></div>
+        <input type="text" id="import-name-input" style="width:100%; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.08); color:#fff; font-size:14px; box-sizing:border-box; margin-bottom:16px;" placeholder="試卷名稱">
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button onclick="document.getElementById('import-name-modal').style.display='none'" style="padding:8px 20px; border-radius:8px; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.08); color:#fff; cursor:pointer;">取消</button>
+            <button onclick="confirmJSONImport()" style="padding:8px 20px; border-radius:8px; border:none; background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; cursor:pointer; font-weight:600;">匯入</button>
+        </div>
+    </div>
+</div>
+</body>
+</html>
